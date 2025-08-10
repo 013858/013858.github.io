@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Whack-a-Mole — Simple Game</title>
+<style>
+  :root{
+    --bg:#0f172a;
+    --card:#0b1220;
+    --accent:#f59e0b;
+    --hole:#13203a;
+    --mole:#f97316;
+    --glass: rgba(255,255,255,0.03);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{
+    min-height:100vh;
+    margin:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg,#071029 0%, var(--bg) 100%);
+    color:#e6eef8;
+    font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    padding:24px;
+  }
+
+  .game {
+    width:100%;
+    max-width:720px;
+    background:linear-gradient(180deg,var(--card), rgba(10,14,22,0.9));
+    border-radius:18px;
+    padding:20px;
+    box-shadow: 0 8px 30px rgba(2,6,23,0.7);
+    border:1px solid rgba(255,255,255,0.03);
+  }
+
+  header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:14px;
+  }
+  h1{font-size:1.2rem;margin:0}
+  .hud {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    font-weight:600;
+  }
+  .stat {
+    background:var(--glass);
+    padding:8px 10px;
+    border-radius:10px;
+    min-width:84px;
+    text-align:center;
+  }
+  .controls { display:flex; gap:8px; }
+  button.control {
+    background:linear-gradient(180deg,#13283b,#0d1b27);
+    color:#fff;
+    border:1px solid rgba(255,255,255,0.04);
+    padding:8px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  button.control[disabled]{opacity:0.45;cursor:not-allowed}
+
+  .board {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-top:18px;
+  }
+
+  .hole {
+    background:linear-gradient(180deg,var(--hole), #0d1a2a);
+    border-radius:14px;
+    height:120px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    transition:transform .12s ease;
+    border:1px solid rgba(255,255,255,0.03);
+    box-shadow: inset 0 -8px 20px rgba(0,0,0,0.5);
+  }
+
+  .hole:active { transform: translateY(2px); }
+
+  /* invisible default inner button that fills the hole (accessibility) */
+  .hole button {
+    appearance:none;
+    -webkit-appearance:none;
+    width:100%;
+    height:100%;
+    background:transparent;
+    border:0;
+    color:inherit;
+    font:inherit;
+    cursor:pointer;
+    border-radius:inherit;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    z-index:2;
+  }
+
+  .mole {
+    width:76px;
+    height:76px;
+    border-radius:50%;
+    background:var(--mole);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transform: translateY(22px) scale(0.85);
+    transition: transform .12s ease, box-shadow .12s ease;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+    color:#0b1220;
+    font-weight:700;
+  }
+
+  .active .mole {
+    transform: translateY(0) scale(1);
+  }
+
+  footer {
+    margin-top:16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+
+  .settings {
+    display:flex;
+    gap:8px;
+    align-items:center;
+    font-size:0.9rem;
+  }
+
+  input[type=range] { width:140px; }
+
+  .small { font-size:0.85rem; opacity:0.9; }
+
+  @media (max-width:520px){
+    .hole{height:96px}
+    .mole{width:60px;height:60px}
+    .hud{flex-direction:column;align-items:flex-end}
+  }
+</style>
+</head>
+<body>
+  <main class="game" role="application" aria-label="Whack a mole game">
+    <header>
+      <h1>Whack‑a‑Mole</h1>
+      <div class="hud">
+        <div class="stat">Score<br><span id="score">0</span></div>
+        <div class="stat">Time<br><span id="time">30</span>s</div>
+        <div class="controls" aria-hidden="false">
+          <button id="startBtn" class="control">Start</button>
+          <button id="stopBtn" class="control" disabled>Stop</button>
+          <button id="resetBtn" class="control">Reset</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="board" id="board" aria-live="polite">
+      <!-- 9 holes -->
+      <div class="hole" data-index="0"><button aria-label="hole 1" data-index="0"></button></div>
+      <div class="hole" data-index="1"><button aria-label="hole 2" data-index="1"></button></div>
+      <div class="hole" data-index="2"><button aria-label="hole 3" data-index="2"></button></div>
+      <div class="hole" data-index="3"><button aria-label="hole 4" data-index="3"></button></div>
+      <div class="hole" data-index="4"><button aria-label="hole 5" data-index="4"></button></div>
+      <div class="hole" data-index="5"><button aria-label="hole 6" data-index="5"></button></div>
+      <div class="hole" data-index="6"><button aria-label="hole 7" data-index="6"></button></div>
+      <div class="hole" data-index="7"><button aria-label="hole 8" data-index="7"></button></div>
+      <div class="hole" data-index="8"><button aria-label="hole 9" data-index="8"></button></div>
+    </section>
+
+    <footer>
+      <div class="settings small">
+        <label for="duration">Game length (s)</label>
+        <input type="range" id="duration" min="10" max="90" value="30" />
+        <span id="durationLabel">30</span>s
+      </div>
+
+      <div class="settings small">
+        <label for="speed">Mole speed</label>
+        <input type="range" id="speed" min="400" max="1500" step="50" value="900" />
+        <span id="speedLabel">900</span>ms
+      </div>
+    </footer>
+  </main>
+
+<script>
+(function(){
+  const holes = Array.from(document.querySelectorAll('.hole'));
+  const buttons = holes.map(h=>h.querySelector('button'));
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const scoreEl = document.getElementById('score');
+  const timeEl = document.getElementById('time');
+  const durationRange = document.getElementById('duration');
+  const durationLabel = document.getElementById('durationLabel');
+  const speedRange = document.getElementById('speed');
+  const speedLabel = document.getElementById('speedLabel');
+
+  let gameTime = parseInt(durationRange.value,10);
+  let moleBaseSpeed = parseInt(speedRange.value,10);
+  let score = 0;
+  let timeLeft = gameTime;
+  let moleTimer = null;
+  let countdownTimer = null;
+  let activeIndex = null;
+  let running = false;
+
+  // helper: create mole element
+  function createMoleEl(){
+    const m = document.createElement('div');
+    m.className = 'mole';
+    m.textContent = '🐹';
+    m.setAttribute('aria-hidden','true');
+    return m;
+  }
+
+  // update UI helpers
+  function updateScore(){ scoreEl.textContent = String(score); }
+  function updateTime(){ timeEl.textContent = String(timeLeft); }
+  durationLabel.textContent = durationRange.value;
+  speedLabel.textContent = speedRange.value;
+
+  // pick a random hole index different from last
+  function randomHoleIndex(){
+    if (holes.length === 1) return 0;
+    let idx;
+    do { idx = Math.floor(Math.random()*holes.length); }
+    while (idx === activeIndex);
+    return idx;
+  }
+
+  // show mole at random hole for a short time
+  function showMoleOnce(){
+    // remove previous
+    if (activeIndex !== null) {
+      holes[activeIndex].classList.remove('active');
+      const old = holes[activeIndex].querySelector('.mole');
+      if (old) old.remove();
+      activeIndex = null;
+    }
+
+    // stop if game ended
+    if (!running || timeLeft <= 0) return;
+
+    const idx = randomHoleIndex();
+    activeIndex = idx;
+    const hole = holes[idx];
+
+    // attach mole
+    const mole = createMoleEl();
+    hole.appendChild(mole);
+    hole.classList.add('active');
+
+    // remove mole after some ms (so it "pops" and hides)
+    const visibleFor = Math.max(180, moleBaseSpeed - Math.floor(Math.random()*400));
+    setTimeout(() => {
+      if (hole.classList.contains('active')) {
+        hole.classList.remove('active');
+        mole.remove();
+        activeIndex = null;
+      }
+    }, visibleFor);
+
+    // schedule next mole: small random jitter for interest
+    const nextIn = Math.max(250, moleBaseSpeed + (Math.floor(Math.random()*600)-300));
+    moleTimer = setTimeout(showMoleOnce, nextIn);
+  }
+
+  function startGame(){
+    if (running) return;
+    running = true;
+    score = 0;
+    updateScore();
+
+    timeLeft = parseInt(durationRange.value,10);
+    updateTime();
+
+    moleBaseSpeed = parseInt(speedRange.value,10);
+
+    // UI toggles
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    durationRange.disabled = true;
+    speedRange.disabled = true;
+
+    // begin the mole loop and countdown
+    showMoleOnce();
+    countdownTimer = setInterval(()=>{
+      timeLeft--;
+      updateTime();
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  }
+
+  function endGame(){
+    running = false;
+    // clear timers
+    clearTimeout(moleTimer);
+    clearInterval(countdownTimer);
+    moleTimer = null;
+    countdownTimer = null;
+
+    // clear any active mole visuals
+    holes.forEach(h=>{
+      h.classList.remove('active');
+      const m = h.querySelector('.mole');
+      if (m) m.remove();
+    });
+    activeIndex = null;
+
+    // UI toggles
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    durationRange.disabled = false;
+    speedRange.disabled = false;
+
+    // simple end feedback
+    alert('Time is up! Your score: ' + score);
+  }
+
+  function stopGame(){
+    running = false;
+    clearTimeout(moleTimer);
+    clearInterval(countdownTimer);
+    moleTimer = null;
+    countdownTimer = null;
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    durationRange.disabled = false;
+    speedRange.disabled = false;
+  }
+
+  // handle successful hits
+  function handleHit(index, evt){
+    if (!running) return;
+    if (index === activeIndex){
+      // increment score and remove mole immediately
+      score++;
+      updateScore();
+      const hole = holes[index];
+      hole.classList.remove('active');
+      const m = hole.querySelector('.mole');
+      if (m) m.remove();
+      activeIndex = null;
+
+      // small "bonus"—speed up a tad as you hit
+      moleBaseSpeed = Math.max(220, moleBaseSpeed - 12);
+    } else {
+      // optional: penalize or do nothing
+      score = Math.max(0, score-0); // no penalty by default
+      updateScore();
+    }
+  }
+
+  // attach click + keyboard handlers to each button
+  buttons.forEach((btn, i) => {
+    btn.addEventListener('click', (e) => { handleHit(i, e); });
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleHit(i, e);
+      }
+    });
+  });
+
+  // controls
+  startBtn.addEventListener('click', startGame);
+  stopBtn.addEventListener('click', stopGame);
+  resetBtn.addEventListener('click', () => {
+    stopGame();
+    score = 0;
+    updateScore();
+    timeLeft = parseInt(durationRange.value,10);
+    updateTime();
+  });
+
+  durationRange.addEventListener('input', (e)=>{
+    durationLabel.textContent = e.target.value;
+    timeLeft = parseInt(e.target.value,10);
+    timeEl.textContent = String(timeLeft);
+  });
+
+  speedRange.addEventListener('input', (e)=>{
+    speedLabel.textContent = e.target.value;
+    moleBaseSpeed = parseInt(e.target.value,10);
+  });
+
+  // accessibility: allow spacebar to start/stop when focus is on controls
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === 's' || e.key === 'S'){ // quick 's' to start/stop
+      if (!running) startGame(); else stopGame();
+    }
+  });
+
+  // expose nothing global — self-contained
+})();
+</script>
+</body>
+</html>
